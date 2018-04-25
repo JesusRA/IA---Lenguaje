@@ -8,7 +8,7 @@ import java.util.TreeSet;
  * Programa que dado un fichero de entrada separa el vocabulario del mismo
  * y lo escribe en otro fichero.
  * 
- * @author Jes˙s Ramos ¡lvarez - Cristina
+ * @author Jes√∫s Ramos √Ålvarez - Cristina Garrido Amador
  * @version 24/04/2018
  */
 public class Vocabulario {
