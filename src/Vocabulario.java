@@ -1,4 +1,5 @@
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.TreeSet;
 
@@ -8,19 +9,22 @@ import java.util.TreeSet;
  * Programa que dado un fichero de entrada separa el vocabulario del mismo
  * y lo escribe en otro fichero.
  * 
- * @author Jes√∫s Ramos √Ålvarez - Cristina Garrido Amador
+ * @author Jes˙s Ramos ¡lvarez - Cristina Garrido Amador
  * @version 24/04/2018
  */
 public class Vocabulario {
 	
-	private static TreeSet<String> palabras; // Set que contendra las palabras
+	private static final int MIN_APARICIONES = 2;
+	
+	private static TreeSet<String> vocabulario; // Set que contendra las palabras
+	private static ArrayList<String> listaPalabras; // Lista todas las palabras encontradas
 	
 	/**
 	 * Metodo que comprueba si una palabra contiene algun digito
 	 * @param palabra Palabra que se comprueba
 	 * @return True en caso de si contener algun digito
 	 */
-	private static boolean contieneNumero(String palabra) {
+	public static boolean contieneNumero(String palabra) {
 	  return palabra.matches(".*\\d+.*");
 	}
 	
@@ -29,7 +33,7 @@ public class Vocabulario {
 	 * @param palabra Palabra que se comprueba
 	 * @return Palabra ya modificada correctamente
 	 */
-	private static String quitarSimbolos (String palabra) {
+	public static String quitarSimbolos (String palabra) {
 		String temp = null;
 		temp = palabra.replaceAll("[^a-zA-Z&']", "");
 		if (temp.startsWith("'"))
@@ -48,11 +52,28 @@ public class Vocabulario {
 		String palabra;
 		for (int i = 0; i < linea.length; i++) {
 			palabra = linea [i];
-			//System.out.println(temp);
 			if (!palabra.startsWith("@") && !palabra.startsWith("#") && !palabra.contains("http://") && !contieneNumero(palabra)) {
-				palabras.add(quitarSimbolos(palabra));
+				listaPalabras.add(quitarSimbolos(palabra));
+				vocabulario.add(quitarSimbolos(palabra));				
 			}			
 		}
+	}
+	
+	private static void desconocida () {		
+		int contador = 0;
+		Iterator<String> it = vocabulario.iterator();
+		while (it.hasNext()) {
+	    	contador = 0;
+	    	String palabra = it.next();
+	    	for (int j = 0; j < listaPalabras.size(); j++) {
+				if (palabra.equals(listaPalabras.get(j)))
+					contador++;
+			}
+	    	if (contador <= MIN_APARICIONES) {
+	    		it.remove();
+	    	}	    	
+	    }
+			
 	}
 	
 	/**
@@ -64,7 +85,8 @@ public class Vocabulario {
 		String ficheroEntrada = args [0]; // Nombre fichero de entrada pasado como primer argumento
 		String ficheroSalida = args [1]; // Nombre fichero de salido pasado como segundo argumento
 		
-		palabras = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+		vocabulario = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+		listaPalabras = new ArrayList<String>();
 		
 		// Lectura del fichero de entrada
 		String linea [];
@@ -77,14 +99,18 @@ public class Vocabulario {
 		
 		// Condicion que corrige el set de palabras para los casos en que
 		// una palabra solo contenia simbolos
-		if (palabras.first().isEmpty())
-			palabras.remove(palabras.first());
+		if (vocabulario.first().isEmpty())
+			vocabulario.remove(vocabulario.first());
+		
+		// Llamada al m
+		desconocida();
+		vocabulario.add("<UNK>");	
 		
 		// Escritura en el fichero de salida
 		BufferedWriter writer = new BufferedWriter (new FileWriter (ficheroSalida));
-		Iterator<String> iterator = palabras.iterator();
+		Iterator<String> iterator = vocabulario.iterator();
 		writer.write("VOCABULARIO: \r\n");
-		writer.write("Numero de palabras: " + (palabras.size()) + "\r\n");
+		writer.write("Numero de palabras: " + (vocabulario.size()) + "\r\n");
 	    while (iterator.hasNext()) {
 	    	writer.write(iterator.next() + "\r\n");
 	    }
