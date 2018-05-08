@@ -1,5 +1,6 @@
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.TreeSet;
 
@@ -14,10 +15,14 @@ import java.util.TreeSet;
  */
 public class Vocabulario {
 	
-	private static final int MIN_APARICIONES = 2;
+	private static final int MIN_APARICIONES = 0;
 	
 	private static TreeSet<String> vocabulario; // Set que contendra las palabras
 	private static ArrayList<String> listaPalabras; // Lista todas las palabras encontradas
+	private static int numTotalTweets = 0;
+	
+	private static String [] ignorar = {"the", "to", "you", "a", "for", "is", "in", "of"};
+	private static ArrayList<String> palabrasIgnorar = new ArrayList<String> (Arrays.asList(ignorar));
 	
 	/**
 	 * Metodo que comprueba si una palabra contiene algun digito
@@ -26,6 +31,7 @@ public class Vocabulario {
 	 */
 	public static boolean contieneNumero(String palabra) {
 	  return palabra.matches(".*\\d+.*");
+	  
 	}
 	
 	/**
@@ -49,12 +55,14 @@ public class Vocabulario {
 	 * @param linea Linea a analizar
 	 */
 	private static void analizarLinea (String [] linea) {
+		numTotalTweets++;
 		String palabra;
 		for (int i = 0; i < linea.length; i++) {
 			palabra = linea [i];
 			if (!palabra.startsWith("@") && !palabra.startsWith("#") && !palabra.contains("http://") && !contieneNumero(palabra)) {
 				listaPalabras.add(quitarSimbolos(palabra));
-				vocabulario.add(quitarSimbolos(palabra));				
+				if (!palabrasIgnorar.contains(quitarSimbolos(palabra).toLowerCase()))
+					vocabulario.add(quitarSimbolos(palabra));				
 			}			
 		}
 	}
@@ -102,7 +110,7 @@ public class Vocabulario {
 		if (vocabulario.first().isEmpty())
 			vocabulario.remove(vocabulario.first());
 		
-		// Llamada al m
+		// Llamada al metodo de limpieza de palabras poco frecuentes
 		desconocida();
 		vocabulario.add("<UNK>");	
 		
@@ -110,9 +118,10 @@ public class Vocabulario {
 		BufferedWriter writer = new BufferedWriter (new FileWriter (ficheroSalida));
 		Iterator<String> iterator = vocabulario.iterator();
 		writer.write("VOCABULARIO: \r\n");
+		writer.write("Numero total de tweets: " + numTotalTweets + "\r\n");
 		writer.write("Numero de palabras: " + (vocabulario.size()) + "\r\n");
 	    while (iterator.hasNext()) {
-	    	writer.write(iterator.next() + "\r\n");
+	    	writer.write(iterator.next().toLowerCase() + "\r\n");
 	    }
 	    writer.close();
 	}

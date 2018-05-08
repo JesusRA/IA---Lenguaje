@@ -15,6 +15,7 @@ public class Aprendizaje {
 	
 	private static ArrayList<String> palabrasTexto;
 	private static int tamVocabulario;
+	private static int numTweets = 0;
 	
 	private static void guardarPalabrasTexto (String ficheroTexto) throws IOException {
 		palabrasTexto = new ArrayList<String>();
@@ -23,6 +24,7 @@ public class Aprendizaje {
 		String palabra;
 		while (readerTexto.ready()) {
 			linea = readerTexto.readLine().split("\\s+");
+			numTweets++;
 			for (int i = 0; i < linea.length; i++) {
 				palabra = linea [i];
 				if (!palabra.startsWith("@") && !palabra.startsWith("#") && !palabra.contains("http://") && !Vocabulario.contieneNumero(palabra)) {
@@ -34,7 +36,7 @@ public class Aprendizaje {
 	}
 	
 	private static double logProbabilidad (int numeroVeces) {
-		double prob = (numeroVeces + 1) / (palabrasTexto.size() + tamVocabulario);
+		double prob = (double) (numeroVeces + 1) / (palabrasTexto.size() + tamVocabulario);
 		return Math.log(prob);
 	}
 
@@ -44,26 +46,34 @@ public class Aprendizaje {
 		String ficheroSalida = args [2];
 		
 		guardarPalabrasTexto(ficheroTexto);
+		for (int i = 0; i < palabrasTexto.size(); i++)
+			if (palabrasTexto.get(i).isEmpty())
+				palabrasTexto.remove(i);
 		
 		BufferedReader readerVocabulario = new BufferedReader (new FileReader (ficheroVocabulario));
 		BufferedWriter writer = new BufferedWriter (new FileWriter (ficheroSalida));		
 		writer.write(ficheroSalida + ": \r\n");
-		writer.write("Numero de palabras del corpus: " + palabrasTexto.size() + "\r\n\r\n");
+		writer.write("Numero de documentos del corpus: " + numTweets + "\r\n");
+		writer.write("Numero de palabras del corpus: " + palabrasTexto.size() + "\r\n");
 		
+		readerVocabulario.readLine();
 		readerVocabulario.readLine();
 		tamVocabulario = Integer.parseInt(readerVocabulario.readLine().replaceAll("[^0-9]", ""));
 		while (readerVocabulario.ready()) {
 			int numeroVeces = 0;
 			String palabraVocabulario = readerVocabulario.readLine().trim();
 			for (int i = 0; i < palabrasTexto.size(); i++) {
-				if (palabraVocabulario.equals(palabrasTexto.get(i)))
+				if (palabraVocabulario.equals(palabrasTexto.get(i).toLowerCase()))
 					numeroVeces++;
 			}
 			writer.write("Palabra: " + palabraVocabulario + " Frec: " + numeroVeces + " LogProb: " + 
-							logProbabilidad(numeroVeces) + "\r\n");
+					logProbabilidad(numeroVeces) + "\r\n");
 		}
 		writer.close();
 		readerVocabulario.close();
+		/*for (int i = 0; i < palabrasTexto.size(); i++) {
+			System.out.println(palabrasTexto.get(i));
+		}*/
 	}
 
 }
