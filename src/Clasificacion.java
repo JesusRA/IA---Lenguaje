@@ -13,8 +13,16 @@ import java.util.ArrayList;
 public class Clasificacion {
 	
 	private static double [] probAprendizaje;
+	private static ArrayList<ArrayList<String>> palabrasAprendizaje = new ArrayList<ArrayList<String>> ();
+	private static ArrayList<ArrayList<Double>> probPalabrasAprendizaje = new ArrayList<ArrayList<Double>> ();
+	private static double [] valoresUNK;
 	private static int [] numeroTweetsClasificados; // numero de tweets clasificados como cada corpus
 	
+	/**
+	 * Metodo para separar las palabras de un Tweet
+	 * @param linea Tweet
+	 * @return ArrayList que contiene las palabras del Tweet
+	 */
 	private static ArrayList<String> palabrasLinea (String linea) {
 		ArrayList<String> palabras = new ArrayList <String> ();
 		String [] p = linea.split("\\s+");
@@ -26,27 +34,19 @@ public class Clasificacion {
 		}
 		return palabras;
 	}
-	
-	private static double buscarValorUNK (String nombreFichero) throws IOException {
-		BufferedReader readerA = new BufferedReader (new FileReader (nombreFichero));
-		for (int k = 0; k < 3; k++)
-			readerA.readLine();
-		while (readerA.ready()) {
-			String [] aprendizaje = readerA.readLine().split("\\s+");
-			if (aprendizaje [1].equals("<unk>")) {
-				readerA.close();
-				return Double.parseDouble(aprendizaje [5]);
-			}							
-		}
-		readerA.close();
-		return 0;
-	}
 
+	/**
+	 * Metodo main
+	 * @throws IOException Gestion de errores de tipo IO
+	 */
 	public static void main(String[] args) throws IOException {
 
-		if (args.length < 3)
+		if (args.length < 4)
 			System.err.println("Argumentos necesarios: ficheroSalida ficheroVocabulario ficheroAClasificar ficheroAprendizaje1...ficheroAprendizajeN");			
 		else {
+			
+			// Inicializacion de variables
+			
 			String ficheroSalida = args [0];
 			String ficheroVocabulario = args [1];
 			String ficheroClasificar = args [2];
@@ -56,12 +56,14 @@ public class Clasificacion {
 			
 			probAprendizaje = new double [args.length - 3];
 			numeroTweetsClasificados = new int [args.length - 3];	
+			valoresUNK = new double [args.length - 3];
 			
 			BufferedReader readerVocabulario = new BufferedReader (new FileReader (ficheroVocabulario));
 			BufferedReader readerClasificar = new BufferedReader (new FileReader (ficheroClasificar));
 			BufferedWriter writer = new BufferedWriter (new FileWriter (ficheroSalida));
 			
-			// Calcular P(I), P(D), P(A)
+			// Calcular P(I), P(D), P(A) y almacenar datos de ficheros de aprendizaje en los arrays
+			// Por cada fichero de aprendizaje se busca su valor de <unk>, sus palabras y las probabilidades de cada una
 			
 			readerVocabulario.readLine();
 			int numTotalTweets = Integer.parseInt(readerVocabulario.readLine().replaceAll("[^0-9]", ""));
@@ -72,6 +74,16 @@ public class Clasificacion {
 				int numTweetsAprendizaje = Integer.parseInt(readerAprendizaje.readLine().replaceAll("[^0-9]", ""));
 				double temp = (double) numTweetsAprendizaje / numTotalTweets;
 				probAprendizaje [i] = Math.log(temp);
+				readerAprendizaje.readLine();
+				palabrasAprendizaje.add(new ArrayList<String>());
+				probPalabrasAprendizaje.add(new ArrayList<Double>());
+				while(readerAprendizaje.ready()) {
+					String [] aprendizaje = readerAprendizaje.readLine().split("\\s+");
+					palabrasAprendizaje.get(i).add(aprendizaje [1]);
+					probPalabrasAprendizaje.get(i).add(Double.parseDouble(aprendizaje [5]));
+				}
+				int posUNK = palabrasAprendizaje.get(i).indexOf("<unk>");
+				valoresUNK [i] = (double) probPalabrasAprendizaje.get(i).get(posUNK);
 				readerAprendizaje.close();
 			}
 			
@@ -83,43 +95,26 @@ public class Clasificacion {
 			int l = 0;
 				
 			// Se separa cada Tweet en sus palabras
+			
 			while (readerClasificar.ready()) {
 				double [] sumaProb = new double [args.length - 3];
 				String tweet = readerClasificar.readLine();
 				ArrayList<String> palabrasTweet = palabrasLinea(tweet);	
 				
-				// Por cada fichero de aprendizaje se busca su valor de <unk>, sus palabras y las probabilidades de cada una
-				for (int i = 0; i < ficherosAprendizaje.length; i++) {
-					double valorUNK = (double) buscarValorUNK (ficherosAprendizaje[i]);
-					
-					BufferedReader readerAprendizaje = new BufferedReader (new FileReader (ficherosAprendizaje[i]));
-					for (int k = 0; k < 3; k++)
-						readerAprendizaje.readLine();
-					ArrayList<String> palabrasAprendizaje = new ArrayList <String>();
-					ArrayList<Double> probPalabraAprendizaje = new ArrayList <Double>();
-					while (readerAprendizaje.ready()) {
-						String [] aprendizaje = readerAprendizaje.readLine().split("\\s+");
-						palabrasAprendizaje.add(aprendizaje [1]);
-						probPalabraAprendizaje.add(Double.parseDouble(aprendizaje [5]));
-					}
-					
+				for (int i = 0; i < ficherosAprendizaje.length; i++) {					
 					// Por cada palabra del Tweet se analiza si aparece en el fichero de aprendizaje
 					// y se suma su probabilidad o la de <unk> en caso de no aparecer
-					for (int j = 0; j < palabrasTweet.size(); j++) {
-						boolean encontrada = false;	
-						for (int k = 0; k < palabrasAprendizaje.size(); k++) {
-							if (palabrasTweet.get(j).toLowerCase().equals(palabrasAprendizaje.get(k))) {
-								sumaProb [i] += (double) probPalabraAprendizaje.get(k);
-								encontrada = true;
-							}								
+					for (int j = 0; j < palabrasTweet.size(); j++) {					
+						if (palabrasAprendizaje.get(i).contains(palabrasTweet.get(j).toLowerCase())) {
+							int pos = palabrasAprendizaje.get(i).indexOf(palabrasTweet.get(j).toLowerCase());
+							sumaProb [i] += (double) probPalabrasAprendizaje.get(i).get(pos);
 						}											
-						if (!encontrada) {
-							sumaProb [i] += valorUNK;
+						else {
+							sumaProb [i] += valoresUNK [i];
 						}
 					}
 					// Se suma a la suma de probabilidades la probabilidad general del fichero de aprendizaje
 					sumaProb [i] += probAprendizaje [i];
-					readerAprendizaje.close();
 				}
 				
 				// Se calcula el maximo de las probabilidades obtenidas
@@ -178,7 +173,5 @@ public class Clasificacion {
 			
 			System.out.println("Finalizado");
 		}		
-		
 	}
-
 }
